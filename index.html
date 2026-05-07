@@ -143,6 +143,22 @@
     flex-shrink: 0;
   }
 
+  /* 고정 실행 버튼 */
+  .floating-run {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    box-shadow: 0 4px 24px rgba(79,209,197,0.25), 0 2px 8px rgba(0,0,0,0.5);
+    border-radius: 99px;
+    padding: 12px 32px;
+    font-size: 14px;
+    gap: 8px;
+  }
+  .floating-run:hover { transform: translateX(-50%) translateY(-2px); }
+  .floating-run:disabled { transform: translateX(-50%); }
+
   .btn {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 8px 16px;
@@ -424,9 +440,6 @@ solve()"></textarea>
         <button class="btn btn-ghost btn-sm" onclick="clearCode()">초기화</button>
         <button class="btn btn-ghost btn-sm" onclick="loadTemplate()">템플릿</button>
       </div>
-      <button class="btn btn-primary" id="run-btn" onclick="runAllTests()" disabled>
-        <span id="run-icon">▶</span> 전체 실행
-      </button>
     </div>
   </div>
 
@@ -469,6 +482,10 @@ solve()"></textarea>
   </div>
 </main>
 
+<button class="btn btn-primary floating-run" id="run-btn" onclick="runAllTests()" disabled>
+  <span id="run-icon">▶</span> 전체 실행
+</button>
+
 <div class="toast-container" id="toast-container"></div>
 
 <script>
@@ -480,7 +497,7 @@ let tcCounter = 0;
 async function initPyodide() {
   try {
     pyodide = await loadPyodide();
-    setStatus('ready', '파이썬 엔진 준비됨 (python 3.12.1)');
+    setStatus('ready', '파이썬 엔진 준비됨');
     setLog('✓ Pyodide 로드 완료. 테스트를 실행할 수 있습니다.');
     document.getElementById('run-btn').disabled = false;
   } catch(e) {
