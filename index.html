@@ -409,9 +409,15 @@
       <div class="logo-sub">Python 알고리즘 테스터</div>
     </div>
   </div>
-  <div id="status-bar">
-    <div class="status-dot loading" id="status-dot"></div>
-    <span id="status-text">파이썬 엔진 로딩 중...</span>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div id="status-bar">
+      <div class="status-dot loading" id="status-dot"></div>
+      <span id="status-text">파이썬 엔진 로딩 중...</span>
+    </div>
+    <span id="save-indicator" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);"></span>
+    <button class="btn btn-primary" id="run-btn" onclick="runAllTests()" disabled>
+      <span id="run-icon">▶</span> 전체 실행
+    </button>
   </div>
 </header>
 
@@ -440,6 +446,7 @@ solve()"></textarea>
         <button class="btn btn-ghost btn-sm" onclick="clearCode()">초기화</button>
         <button class="btn btn-ghost btn-sm" onclick="loadTemplate()">템플릿</button>
       </div>
+      <span style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">Ctrl+Enter 실행</span>
     </div>
   </div>
 
@@ -815,12 +822,38 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Init with sample test cases
+// ── LocalStorage 저장/불러오기 ─────────────────────────────────
+const STORAGE_KEY = 'pyjudge_code';
+let saveTimer = null;
+
+function saveCode() {
+  localStorage.setItem(STORAGE_KEY, document.getElementById('code-editor').value);
+  const el = document.getElementById('save-indicator');
+  el.textContent = '✓ 저장됨';
+  el.style.color = 'var(--green)';
+  setTimeout(() => { el.textContent = ''; }, 2000);
+}
+
+function loadSavedCode() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved !== null) {
+    document.getElementById('code-editor').value = saved;
+  }
+}
+
+document.getElementById('code-editor').addEventListener('input', () => {
+  const el = document.getElementById('save-indicator');
+  el.textContent = '저장 중...';
+  el.style.color = 'var(--muted)';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveCode, 800);
+});
+
+// Init
 window.addEventListener('load', () => {
+  loadSavedCode();
   initPyodide();
-  addTestCase('5', '10');
-  addTestCase('3', '6');
-  addTestCase('0', '0');
+  addTestCase('', '');
 });
 </script>
 </body>
