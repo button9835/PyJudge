@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyJudge — Python 알고리즘 공부하기</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161a23;
+    --surface2: #1e2430;
+    --border: #2a3044;
+    --accent: #4fd1c5;
+    --accent2: #7f6cf7;
+    --red: #f87171;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --code-bg: #111520;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700; font-size: 14px; color: #fff;
+  }
+  .logo-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700; font-size: 16px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  #status-bar {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--muted);
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .status-dot.loading { background: var(--yellow); animation: pulse 1s infinite; }
+  .status-dot.ready { background: var(--green); }
+  .status-dot.error { background: var(--red); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* Main layout */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    flex: 1;
+    height: calc(100vh - 57px);
+    overflow: hidden;
+  }
+
+  /* Code panel */
+  .code-panel {
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .panel-tabs { display: flex; gap: 0; }
+  .tab {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  #code-editor {
+    flex: 1;
+    width: 100%;
+    background: var(--code-bg);
+    color: #a8d8b9;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 20px;
+    border: none;
+    outline: none;
+    resize: none;
+    tab-size: 4;
+    overflow: auto;
+  }
+  #code-editor::placeholder { color: var(--muted); }
+
+  .code-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid #3a1f1f; }
+  .btn-danger:hover { background: #2a1515; }
+
+  /* Right panel */
+  .testcase-panel {
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .testcase-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .testcase-list::-webkit-scrollbar { width: 4px; }
+  .testcase-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .testcase-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .testcase-item.pass { border-color: #1a4a2e; }
+  .testcase-item.fail { border-color: #4a1a1a; }
+  .testcase-item.running { border-color: var(--accent2); animation: border-pulse 1s infinite; }
+  @keyframes border-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  .tc-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--surface);
+    cursor: pointer;
+    user-select: none;
+  }
+  .tc-title {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 500;
+  }
+  .tc-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 99px;
+    font-size: 10px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .badge-wait { background: #1e2430; color: var(--muted); }
+  .badge-pass { background: #1a3a28; color: var(--green); }
+  .badge-fail { background: #3a1a1a; color: var(--red); }
+  .badge-run  { background: #1e1a3a; color: var(--accent2); }
+  .badge-err  { background: #3a2a10; color: var(--yellow); }
+
+  .tc-body {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tc-field label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .tc-field textarea {
+    width: 100%;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 7px 10px;
+    resize: vertical;
+    min-height: 52px;
+    outline: none;
+    line-height: 1.5;
+    transition: border-color 0.2s;
+  }
+  .tc-field textarea:focus { border-color: var(--accent); }
+
+  .tc-result {
+    background: var(--code-bg);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    min-height: 36px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+    border: 1px solid var(--border);
+  }
+  .tc-result.pass { color: var(--green); border-color: #1a4a2e; }
+  .tc-result.fail { color: var(--red); border-color: #4a1a1a; }
+  .tc-result.err  { color: var(--yellow); border-color: #4a3a10; }
+
+  .tc-actions {
+    display: flex; justify-content: flex-end;
+    padding: 6px 12px 8px;
+  }
+
+  /* Add testcase area */
+  .add-tc-btn {
+    margin: 8px 12px 12px;
+    width: calc(100% - 24px);
+    padding: 10px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    flex-shrink: 0;
+  }
+  .add-tc-btn:hover { border-color: var(--accent); color: var(--accent); background: #0d1f1e; }
+
+  /* Results summary */
+  .result-summary {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .summary-bar {
+    height: 4px; border-radius: 2px;
+    background: var(--border);
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .summary-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    transition: width 0.5s ease;
+  }
+  .summary-text {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px;
+  }
+  .summary-label { color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .summary-score { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; }
+
+  /* Output panel */
+  .output-panel {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .output-body {
+    padding: 12px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-height: 120px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .output-body::-webkit-scrollbar { width: 4px; }
+  .output-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 9999;
+  }
+  .toast {
+    padding: 10px 16px; border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    animation: slide-in 0.3s ease, fade-out 0.3s ease 2.7s forwards;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast-ok { background: #1a3a28; color: var(--green); border: 1px solid #2a5a3a; }
+  .toast-err { background: #3a1a1a; color: var(--red); border: 1px solid #5a2a2a; }
+  @keyframes slide-in { from { transform: translateX(100%); opacity:0 } to { transform: translateX(0); opacity:1 } }
+  @keyframes fade-out { to { opacity:0; transform: translateX(100%) } }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Empty state */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px 16px; color: var(--muted);
+    font-size: 13px; text-align: center; gap: 8px;
+  }
+  .empty-icon { font-size: 32px; }
+
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg) } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">▶</div>
+    <div>
+      <div class="logo-text">PyJudge</div>
+      <div class="logo-sub">Python 알고리즘 테스터</div>
+    </div>
+  </div>
+  <div id="status-bar">
+    <div class="status-dot loading" id="status-dot"></div>
+    <span id="status-text">파이썬 엔진 로딩 중...</span>
+  </div>
+</header>
+
+<main>
+  <!-- Code Panel -->
+  <div class="code-panel">
+    <div class="panel-header">
+      <div class="panel-tabs">
+        <div class="tab active">solution.py</div>
+      </div>
+      <span style="font-size:11px;">Tab = 4 spaces</span>
+    </div>
+    <textarea id="code-editor" spellcheck="false" placeholder="# 여기에 파이썬 코드를 작성하세요
+# 입력은 input() 으로, 출력은 print() 로 해주세요
+
+import sys
+input = sys.stdin.readline
+
+def solve():
+    n = int(input())
+    print(n * 2)
+
+solve()"></textarea>
+    <div class="code-toolbar">
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="clearCode()">초기화</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadTemplate()">템플릿</button>
+      </div>
+      <button class="btn btn-primary" id="run-btn" onclick="runAllTests()" disabled>
+        <span id="run-icon">▶</span> 전체 실행
+      </button>
+    </div>
+  </div>
+
+  <!-- Testcase Panel -->
+  <div class="testcase-panel">
+    <div class="panel-header" style="justify-content:space-between;">
+      <span>테스트 케이스</span>
+      <span id="tc-count" style="color:var(--accent)">0개</span>
+    </div>
+
+    <div class="testcase-list" id="testcase-list">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">📋</div>
+        <div>테스트 케이스가 없습니다</div>
+        <div style="font-size:11px;">아래 버튼으로 추가해보세요</div>
+      </div>
+    </div>
+
+    <button class="add-tc-btn" onclick="addTestCase()">
+      <span>+</span> 테스트 케이스 추가
+    </button>
+
+    <div class="result-summary">
+      <div class="summary-text">
+        <span class="summary-label">결과</span>
+        <span class="summary-score" id="summary-score" style="color:var(--muted)">—</span>
+      </div>
+      <div class="summary-bar">
+        <div class="summary-fill" id="summary-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="output-panel">
+      <div class="panel-header">
+        <span>실행 로그</span>
+        <button class="btn btn-ghost btn-sm" onclick="clearLog()">지우기</button>
+      </div>
+      <div class="output-body" id="output-log">파이썬 엔진 준비 중...</div>
+    </div>
+  </div>
+</main>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+let pyodide = null;
+let testCases = [];
+let tcCounter = 0;
+
+// ── Init Pyodide ──────────────────────────────────────────────
+async function initPyodide() {
+  try {
+    pyodide = await loadPyodide();
+    setStatus('ready', '파이썬 엔진 준비됨 - Python 3.12.1');
+    setLog('✓ Pyodide 로드 완료. 테스트를 실행할 수 있습니다.');
+    document.getElementById('run-btn').disabled = false;
+  } catch(e) {
+    setStatus('error', '엔진 로드 실패');
+    setLog('✗ Pyodide 로드 실패: ' + e.message);
+  }
+}
+
+function setStatus(type, text) {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot ' + type;
+  document.getElementById('status-text').textContent = text;
+}
+
+// ── Test Case Management ──────────────────────────────────────
+function addTestCase(inputVal='', expectedVal='') {
+  const id = ++tcCounter;
+  const tc = { id, inputVal, expectedVal };
+  testCases.push(tc);
+  renderTestCase(tc);
+  updateEmptyState();
+  updateCounter();
+}
+
+function renderTestCase(tc) {
+  const list = document.getElementById('testcase-list');
+  const el = document.createElement('div');
+  el.className = 'testcase-item';
+  el.id = `tc-${tc.id}`;
+  el.innerHTML = `
+    <div class="tc-header" onclick="toggleTC(${tc.id})">
+      <div class="tc-title">
+        <span style="color:var(--muted);font-size:11px;">#${tc.id}</span>
+        <span id="tc-name-${tc.id}">테스트 ${tc.id}</span>
+      </div>
+      <div id="tc-badge-${tc.id}" class="tc-badge badge-wait">대기</div>
+    </div>
+    <div class="tc-body" id="tc-body-${tc.id}">
+      <div class="tc-field">
+        <label>입력 (Input)</label>
+        <textarea id="tc-input-${tc.id}" placeholder="표준 입력값을 입력하세요&#10;예) 5&#10;1 2 3 4 5" rows="3" oninput="onTcChange(${tc.id})">${escapeHtml(tc.inputVal)}</textarea>
+      </div>
+      <div class="tc-field">
+        <label>예상 출력 (Expected)</label>
+        <textarea id="tc-expected-${tc.id}" placeholder="예상되는 출력값" rows="2" oninput="onTcChange(${tc.id})">${escapeHtml(tc.expectedVal)}</textarea>
+      </div>
+      <div class="tc-field">
+        <label>실제 출력 (Actual)</label>
+        <div class="tc-result" id="tc-result-${tc.id}">아직 실행하지 않았습니다</div>
+      </div>
+      <div class="tc-actions">
+        <button class="btn btn-ghost btn-sm" onclick="runSingleTest(${tc.id})" style="margin-right:6px;">▶ 실행</button>
+        <button class="btn btn-danger btn-sm" onclick="removeTestCase(${tc.id})">✕ 삭제</button>
+      </div>
+    </div>
+  `;
+  list.appendChild(el);
+}
+
+function onTcChange(id) {
+  setBadge(id, 'wait', '대기');
+  setResult(id, '아직 실행하지 않았습니다', '');
+}
+
+function toggleTC(id) {
+  const body = document.getElementById(`tc-body-${id}`);
+  body.style.display = body.style.display === 'none' ? '' : 'none';
+}
+
+function removeTestCase(id) {
+  testCases = testCases.filter(t => t.id !== id);
+  const el = document.getElementById(`tc-${id}`);
+  if (el) el.remove();
+  updateEmptyState();
+  updateCounter();
+  updateSummary();
+}
+
+function updateEmptyState() {
+  document.getElementById('empty-state').style.display = testCases.length ? 'none' : '';
+}
+function updateCounter() {
+  document.getElementById('tc-count').textContent = testCases.length + '개';
+}
+
+// ── Run Tests ─────────────────────────────────────────────────
+async function runAllTests() {
+  if (!pyodide) { toast('파이썬 엔진이 아직 준비되지 않았습니다', 'err'); return; }
+  if (testCases.length === 0) { toast('테스트 케이스가 없습니다', 'err'); return; }
+
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 실행 중...';
+
+  setLog('── 전체 테스트 실행 시작 ──');
+  for (const tc of testCases) {
+    await runSingleTest(tc.id);
+  }
+  setLog('── 전체 테스트 완료 ──');
+
+  btn.disabled = false;
+  btn.innerHTML = '<span id="run-icon">▶</span> 전체 실행';
+  updateSummary();
+}
+
+async function runSingleTest(id) {
+  if (!pyodide) { toast('파이썬 엔진이 아직 준비되지 않았습니다', 'err'); return; }
+  const inputEl = document.getElementById(`tc-input-${id}`);
+  const expectedEl = document.getElementById(`tc-expected-${id}`);
+  if (!inputEl) return;
+
+  const inputVal = inputEl.value;
+  const expected = expectedEl.value.trimEnd();
+
+  setBadge(id, 'run', '실행중');
+  setResult(id, '실행 중...', '');
+
+  const code = document.getElementById('code-editor').value;
+
+  try {
+    // Redirect stdout + stdin simulation
+    const result = await runPython(code, inputVal);
+    const actual = result.trimEnd();
+
+    if (actual === expected) {
+      setBadge(id, 'pass', '✓ PASS');
+      setResult(id, actual || '(빈 출력)', 'pass');
+      addLog(`#${id} ✓ PASS`);
+      document.getElementById(`tc-${id}`).className = 'testcase-item pass';
+    } else {
+      setBadge(id, 'fail', '✗ FAIL');
+      setResult(id, `실제: ${actual || '(빈 출력)'}\n예상: ${expected || '(빈 출력)'}`, 'fail');
+      addLog(`#${id} ✗ FAIL  got: ${JSON.stringify(actual)}  expected: ${JSON.stringify(expected)}`);
+      document.getElementById(`tc-${id}`).className = 'testcase-item fail';
+    }
+  } catch (e) {
+    setBadge(id, 'err', '! ERROR');
+    const msg = e.message.split('\n').slice(-3).join('\n');
+    setResult(id, msg, 'err');
+    addLog(`#${id} ERROR: ${msg}`);
+    document.getElementById(`tc-${id}`).className = 'testcase-item fail';
+  }
+  updateSummary();
+}
+
+async function runPython(code, inputData) {
+  return new Promise((resolve, reject) => {
+    try {
+      const lines = inputData.split('\n');
+      let lineIdx = 0;
+
+      pyodide.globals.set('__input_lines__', pyodide.toPy(lines));
+
+      const wrappedCode = `
+import sys
+import io
+
+_input_lines = list(__input_lines__)
+_line_idx = [0]
+_output_buf = io.StringIO()
+
+def _mock_input(prompt=''):
+    if _line_idx[0] < len(_input_lines):
+        val = _input_lines[_line_idx[0]]
+        _line_idx[0] += 1
+        return val
+    return ''
+
+import builtins
+builtins.input = _mock_input
+
+_old_stdout = sys.stdout
+sys.stdout = _output_buf
+
+try:
+${code.split('\n').map(l => '    ' + l).join('\n')}
+finally:
+    sys.stdout = _old_stdout
+
+__result__ = _output_buf.getvalue()
+`;
+      pyodide.runPython(wrappedCode);
+      const result = pyodide.globals.get('__result__');
+      resolve(result || '');
+    } catch(e) {
+      reject(e);
+    }
+  });
+}
+
+// ── UI Helpers ────────────────────────────────────────────────
+function setBadge(id, type, text) {
+  const el = document.getElementById(`tc-badge-${id}`);
+  if (!el) return;
+  const map = { wait:'badge-wait', pass:'badge-pass', fail:'badge-fail', run:'badge-run', err:'badge-err' };
+  el.className = 'tc-badge ' + (map[type] || 'badge-wait');
+  el.textContent = text;
+}
+
+function setResult(id, text, cls) {
+  const el = document.getElementById(`tc-result-${id}`);
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'tc-result' + (cls ? ' ' + cls : '');
+}
+
+function updateSummary() {
+  const items = document.querySelectorAll('.testcase-item');
+  let pass = 0, total = 0;
+  items.forEach(el => {
+    const badge = el.querySelector('.tc-badge');
+    if (!badge) return;
+    const txt = badge.textContent;
+    if (txt.includes('PASS') || txt.includes('FAIL') || txt.includes('ERROR')) total++;
+    if (txt.includes('PASS')) pass++;
+  });
+  if (total === 0) {
+    document.getElementById('summary-score').textContent = '—';
+    document.getElementById('summary-score').style.color = 'var(--muted)';
+    document.getElementById('summary-fill').style.width = '0%';
+    return;
+  }
+  const pct = Math.round(pass / total * 100);
+  document.getElementById('summary-score').textContent = `${pass} / ${total}  (${pct}%)`;
+  document.getElementById('summary-score').style.color = pass === total ? 'var(--green)' : pass === 0 ? 'var(--red)' : 'var(--yellow)';
+  document.getElementById('summary-fill').style.width = pct + '%';
+}
+
+let logLines = [];
+function setLog(text) {
+  logLines = [text];
+  document.getElementById('output-log').textContent = text;
+}
+function addLog(text) {
+  logLines.push(text);
+  const el = document.getElementById('output-log');
+  el.textContent = logLines.join('\n');
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() { setLog(''); }
+
+function clearCode() {
+  if (confirm('코드를 초기화하시겠습니까?')) {
+    document.getElementById('code-editor').value = '';
+  }
+}
+
+function loadTemplate() {
+  const templates = [
+`# 기본 입출력 템플릿
+import sys
+input = sys.stdin.readline
+
+def solve():
+    n = int(input())
+    arr = list(map(int, input().split()))
+    print(sum(arr))
+
+solve()`,
+`# 여러 테스트케이스
+import sys
+input = sys.stdin.readline
+
+T = int(input())
+for _ in range(T):
+    n = int(input())
+    print(n)`,
+`# 2D 그리드 입력
+import sys
+input = sys.stdin.readline
+
+n, m = map(int, input().split())
+grid = [list(map(int, input().split())) for _ in range(n)]
+print(grid[0][0])`
+  ];
+  const idx = Math.floor(Math.random() * templates.length);
+  document.getElementById('code-editor').value = templates[idx];
+}
+
+function toast(msg, type='ok') {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = (type==='ok' ? '✓ ' : '✗ ') + msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3100);
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Tab key in editor
+document.getElementById('code-editor').addEventListener('keydown', function(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = this.selectionStart, end = this.selectionEnd;
+    this.value = this.value.substring(0,s) + '    ' + this.value.substring(end);
+    this.selectionStart = this.selectionEnd = s + 4;
+  }
+  if (e.key === 'Enter') {
+    // Auto-indent
+    const s = this.selectionStart;
+    const lines = this.value.substring(0, s).split('\n');
+    const lastLine = lines[lines.length - 1];
+    const indent = lastLine.match(/^(\s*)/)[1];
+    const extraIndent = lastLine.trimEnd().endsWith(':') ? '    ' : '';
+    const ins = '\n' + indent + extraIndent;
+    e.preventDefault();
+    this.value = this.value.substring(0, s) + ins + this.value.substring(this.selectionEnd);
+    this.selectionStart = this.selectionEnd = s + ins.length;
+  }
+});
+
+// Ctrl+Enter = run
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    runAllTests();
+  }
+});
+
+// Init with sample test cases
+window.addEventListener('load', () => {
+  initPyodide();
+  addTestCase('5', '10');
+  addTestCase('3', '6');
+  addTestCase('0', '0');
+});
+</script>
+</body>
+</html>
